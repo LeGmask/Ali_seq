@@ -1,7 +1,6 @@
 import itertools
 from enum import Enum
 from typing import List, Tuple
-from tabulate import tabulate
 
 
 class Direction(Enum):
@@ -38,26 +37,21 @@ class Alignement:
         Return the bestaction with coord, maximal score and direction
         """
         score = []
-        possible = [
-            (coord, Direction.DOWN),
-            (coord, Direction.RIGHT),
-            (coord, Direction.DIAG),
-        ]
-        for i in possible:
-            coord: Coord = i[0]
-            if i[1] == Direction.DIAG:
-                oldScore = self.matScores[coord[0] - 1][coord[1] - 1]
-                score.append(
-                    (coord, oldScore + self.match, Direction.DIAG)
-                    if self.seqs[1][coord[0] - 1] == self.seqs[0][coord[1] - 1]
-                    else (coord, oldScore + self.mismatch, Direction.DIAG)
-                )
-            elif i[1] == Direction.DOWN:
-                oldScore = self.matScores[coord[0] - 1][coord[1]]
-                score.append((coord, oldScore + self.gap, Direction.DOWN))
-            else:  # right
-                oldScore = self.matScores[coord[0]][coord[1] - 1]
-                score.append((coord, oldScore + self.gap, Direction.RIGHT))
+        for direction in Direction:
+            match direction:
+                case Direction.DIAG:
+                    oldScore = self.matScores[coord[0] - 1][coord[1] - 1]
+                    score.append(
+                        (coord, oldScore + self.match, Direction.DIAG)
+                        if self.seqs[1][coord[0] - 1] == self.seqs[0][coord[1] - 1]
+                        else (coord, oldScore + self.mismatch, Direction.DIAG)
+                    )
+                case Direction.DOWN:
+                    oldScore = self.matScores[coord[0] - 1][coord[1]]
+                    score.append((coord, oldScore + self.gap, Direction.DOWN))
+                case Direction.RIGHT:  # right
+                    oldScore = self.matScores[coord[0]][coord[1] - 1]
+                    score.append((coord, oldScore + self.gap, Direction.RIGHT))
         maxScore = max(score, key=lambda x: x[1])[1]
         return [i for i in score if i[1] == maxScore]
 
@@ -97,16 +91,3 @@ class Alignement:
 
     def __repr__(self):
         return str(self.aliSeqs[0] + "\n" + self.aliSeqs[1])
-
-
-def drawMatrix(matrix):
-    print(tabulate(matrix, tablefmt="fancy_grid"))
-
-
-ali = Alignement("LAFLALMEE", "LAME", match=0, mismatch=-1, gap=-2)
-ali.NWSIterFill()
-
-drawMatrix(ali.matScores)
-drawMatrix(ali.matDir)
-ali.NWSBacktrack()
-print(ali)
