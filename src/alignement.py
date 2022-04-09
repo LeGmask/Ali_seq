@@ -12,11 +12,11 @@ class Direction(Enum):
         return self.value
 
 
-# Alias de type:
+# Type of alignment
 Coord = Tuple[int, int]
 
-
-class Alignement:
+# @TODO: add docstring and tests
+class Alignment:
     def __init__(self, seq1, seq2, match=2, mismatch=-1, gap=-1):
         self.seqs = (seq1, seq2)
         self.match = match
@@ -33,12 +33,12 @@ class Alignement:
         self.aliSeqs = ["", ""]
 
     def bestAction(self, coord: Coord) -> List[Tuple[Coord, int, Direction]]:
-        """ "
+        """
         Return the bestaction with coord, maximal score and direction
         """
         score = []
         for direction in Direction:
-            match direction:
+            match direction:  # Pattern matching (python 3.10)
                 case Direction.DIAG:
                     oldScore = self.matScores[coord[0] - 1][coord[1] - 1]
                     score.append(
@@ -46,29 +46,31 @@ class Alignement:
                         if self.seqs[1][coord[0] - 1] == self.seqs[0][coord[1] - 1]
                         else (coord, oldScore + self.mismatch, Direction.DIAG)
                     )
+
                 case Direction.DOWN:
                     oldScore = self.matScores[coord[0] - 1][coord[1]]
                     score.append((coord, oldScore + self.gap, Direction.DOWN))
+
                 case Direction.RIGHT:  # right
                     oldScore = self.matScores[coord[0]][coord[1] - 1]
                     score.append((coord, oldScore + self.gap, Direction.RIGHT))
+                    
         maxScore = max(score, key=lambda x: x[1])[1]
         return [i for i in score if i[1] == maxScore]
 
     def NWSIterFill(self):
-        # Initialisation le gap est proportionel a l'index de la sequence
-        for i in range(len(self.matScores)):
-            self.matScores[i][0] = self.gap * i
-            self.matDir[i][0].append(Direction.DOWN)
-        for j in range(len(self.matScores[0])):
-            self.matScores[0][j] = self.gap * j
-            self.matDir[0][j].append(Direction.RIGHT)
         for j, i in itertools.product(
-            range(1, len(self.seqs[0]) + 1), range(1, len(self.seqs[1]) + 1)
+            range(len(self.seqs[0]) + 1), range(len(self.seqs[1]) + 1)
         ):
-            for _, score, direction in self.bestAction((i, j)):
-                self.matScores[i][j] = score
-                self.matDir[i][j].append(direction)
+            if (
+                i == 0 or j == 0
+            ):  # Initialisation gap is proportional to the length of the sequence
+                self.matScores[i][j] = i * self.gap
+                self.matDir[i][j].append(Direction.DOWN if i > 0 else Direction.RIGHT)
+            else:  # i, j > 0
+                for _, score, direction in self.bestAction((i, j)):
+                    self.matScores[i][j] = score
+                    self.matDir[i][j].append(direction)
 
     def NWSBacktrack(self):
         # we start from the end of the matrix
