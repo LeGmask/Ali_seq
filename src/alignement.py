@@ -32,35 +32,40 @@ class Alignment:
         ]
         self.aliSeqs = ["", ""]
 
-    def bestAction(self, coord: Coord) -> List[Tuple[Coord, int, Direction]]:
+    def bestAction(self, coord: Coord) -> List[Tuple[int, Direction]]:
         """
         Return the bestaction with coord, maximal score and direction
         """
         previousScore = self.matScores[coord[0] - 1][coord[1] - 1]
-        score = [(coord, previousScore + self.match, Direction.DIAG) if self.seqs[1][coord[0] - 1] == self.seqs[0][coord[1] - 1] else (coord, previousScore + self.mismatch, Direction.DIAG)]
+        score = [
+            (previousScore + self.match, Direction.DIAG)
+            if self.seqs[1][coord[0] - 1] == self.seqs[0][coord[1] - 1]
+            else (previousScore + self.mismatch, Direction.DIAG)
+        ]
 
         previousScore = self.matScores[coord[0] - 1][coord[1]]
-        score.append((coord, previousScore + self.gap, Direction.DOWN))
+        score.append((previousScore + self.gap, Direction.DOWN))
 
         previousScore = self.matScores[coord[0]][coord[1] - 1]
-        score.append((coord, previousScore + self.gap, Direction.RIGHT))
+        score.append((previousScore + self.gap, Direction.RIGHT))
 
-        maxScore = max(score, key=lambda x: x[1])[1]
-        return [i for i in score if i[1] == maxScore]
+        maxScore = max(score, key=lambda x: x[0])[0]
+        return [i for i in score if i[0] == maxScore]
 
     def NWSIterFill(self):
-        for i in range(len(self.matScores)):
-            self.matScores[i][0] = self.gap * i
-            self.matDir[i][0].append(Direction.DOWN)
-        for j in range(len(self.matScores[0])):
-            self.matScores[0][j] = self.gap * j
-            self.matDir[0][j].append(Direction.RIGHT)
         for j, i in itertools.product(
-            range(1,len(self.seqs[0]) + 1), range(1, len(self.seqs[1]) + 1)
+            range(len(self.seqs[0]) + 1), range(len(self.seqs[1]) + 1)
         ):
-            for _, score, direction in self.bestAction((i, j)):
-                self.matScores[i][j] = score
-                self.matDir[i][j].append(direction)
+            if j == 0 or i == 0:
+                self.matScores[i][j] = self.gap * max(i, j)
+                if j == 0:
+                    self.matDir[i][j].append(Direction.DOWN)
+                else:
+                    self.matDir[i][j].append(Direction.RIGHT)
+            else:
+                for score, direction in self.bestAction((i, j)):
+                    self.matScores[i][j] = score
+                    self.matDir[i][j].append(direction)
 
     def NWSBacktrack(self):
         # we start from the end of the matrix
