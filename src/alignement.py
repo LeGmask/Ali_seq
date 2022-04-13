@@ -1,6 +1,7 @@
 import itertools
 from enum import Enum
 from typing import List, Tuple
+from .BLOSUM import BLOSUM
 
 
 class Direction(Enum):
@@ -32,15 +33,22 @@ class Alignment:
         ]
         self.aliSeqs = ["", ""]
 
-    def bestAction(self, coord: Coord) -> List[Tuple[int, Direction]]:
+
+    def __calculateScore(self, coord, previousScore, match, useBlosum: bool):
+        if useBlosum:
+            return (previousScore + BLOSUM[self.seqs[0][coord[0] - 1]][self.seqs[1][coord[0] - 1]], Direction.DIAG)
+        else:
+            return (previousScore + (self.match if match else self.mismatch), Direction.DIAG)
+
+
+    def __bestAction(self, coord: Coord, useBlosum: bool) -> List[Tuple[int, Direction]]:
         """
         Return the bestaction with coord, maximal score and direction
         """
+
         previousScore = self.matScores[coord[0] - 1][coord[1] - 1]
         score = [
-            (previousScore + self.match, Direction.DIAG)
-            if self.seqs[1][coord[0] - 1] == self.seqs[0][coord[1] - 1]
-            else (previousScore + self.mismatch, Direction.DIAG)
+            self.__calculateScore(coord, previousScore, self.seqs[1][coord[0] - 1] == self.seqs[0][coord[1] - 1], useBlosum),
         ]
 
         previousScore = self.matScores[coord[0] - 1][coord[1]]
@@ -52,7 +60,7 @@ class Alignment:
         maxScore = max(score, key=lambda x: x[0])[0]
         return [i for i in score if i[0] == maxScore]
 
-    def NWSIterFill(self):
+    def NWSIterFill(self, useBlosum=False):
         for j, i in itertools.product(
             range(len(self.seqs[0]) + 1), range(len(self.seqs[1]) + 1)
         ):
@@ -63,9 +71,10 @@ class Alignment:
                 else:
                     self.matDir[i][j].append(Direction.RIGHT)
             else:
-                for score, direction in self.bestAction((i, j)):
+                for score, direction in self.__bestAction((i, j), useBlosum):
                     self.matScores[i][j] = score
                     self.matDir[i][j].append(direction)
+
 
     def NWSBacktrack(self):
         # we start from the end of the matrix
