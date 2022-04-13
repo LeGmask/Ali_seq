@@ -5,8 +5,8 @@ from .BLOSUM import BLOSUM
 
 
 class Direction(Enum):
-    DOWN = "down"
-    RIGHT = "right"
+    UP = "up"
+    LEFT = "left"
     DIAG = "diag"
 
     def __repr__(self):
@@ -36,7 +36,7 @@ class Alignment:
 
     def __calculateScore(self, coord, previousScore, match, useBlosum: bool):
         if useBlosum:
-            return (previousScore + BLOSUM[self.seqs[0][coord[0] - 1]][self.seqs[1][coord[0] - 1]], Direction.DIAG)
+            return (previousScore + BLOSUM[self.seqs[0][coord[1] - 1]][self.seqs[1][coord[0] - 1]], Direction.DIAG)
         else:
             return (previousScore + (self.match if match else self.mismatch), Direction.DIAG)
 
@@ -52,24 +52,24 @@ class Alignment:
         ]
 
         previousScore = self.matScores[coord[0] - 1][coord[1]]
-        score.append((previousScore + self.gap, Direction.DOWN))
+        score.append((previousScore + self.gap, Direction.UP))
 
         previousScore = self.matScores[coord[0]][coord[1] - 1]
-        score.append((previousScore + self.gap, Direction.RIGHT))
+        score.append((previousScore + self.gap, Direction.LEFT))
 
         maxScore = max(score, key=lambda x: x[0])[0]
         return [i for i in score if i[0] == maxScore]
 
     def NWSIterFill(self, useBlosum=False):
-        for j, i in itertools.product(
-            range(len(self.seqs[0]) + 1), range(len(self.seqs[1]) + 1)
+        for i, j in itertools.product(
+            range(len(self.seqs[1]) + 1), range(len(self.seqs[0]) + 1)
         ):
             if j == 0 or i == 0:
                 self.matScores[i][j] = self.gap * max(i, j)
                 if j == 0:
-                    self.matDir[i][j].append(Direction.DOWN)
+                    self.matDir[i][j].append(Direction.UP)
                 else:
-                    self.matDir[i][j].append(Direction.RIGHT)
+                    self.matDir[i][j].append(Direction.LEFT)
             else:
                 for score, direction in self.__bestAction((i, j), useBlosum):
                     self.matScores[i][j] = score
@@ -78,22 +78,23 @@ class Alignment:
 
     def NWSBacktrack(self):
         # we start from the end of the matrix
-        i, j = map(len, self.seqs)
+        j, i = map(len, self.seqs)
         while i > 0 or j > 0:
-            # Here we use pattern matching to get the direction (python 3.10)
-            match self.matDir[j][i][-1]:
-                case Direction.DOWN:
+            match self.matDir[i][j][-1]:
+                case Direction.UP:
                     self.aliSeqs[0] = "-" + self.aliSeqs[0]
-                    self.aliSeqs[1] = self.seqs[1][i - 1] + self.aliSeqs[1]
-                    j, i = j - 1, i
-                case Direction.RIGHT:
-                    self.aliSeqs[0] = self.seqs[0][i - 1] + self.aliSeqs[0]
+                    self.aliSeqs[1] = self.seqs[1][i-1] + self.aliSeqs[1]
+                    i -= 1
+                case Direction.LEFT:
+                    self.aliSeqs[0] = self.seqs[0][j-1] + self.aliSeqs[0]
                     self.aliSeqs[1] = "-" + self.aliSeqs[1]
-                    j, i = j, i - 1
+                    j -= 1
                 case Direction.DIAG:
-                    self.aliSeqs[0] = self.seqs[0][i - 1] + self.aliSeqs[0]
-                    self.aliSeqs[1] = self.seqs[1][j - 1] + self.aliSeqs[1]
-                    j, i = j - 1, i - 1
+                    self.aliSeqs[0] = self.seqs[0][j-1] + self.aliSeqs[0]
+                    self.aliSeqs[1] = self.seqs[1][i-1] + self.aliSeqs[1]
+                    i -= 1
+                    j -= 1
+
 
     def __repr__(self):
         return str(self.aliSeqs[0] + "\n" + self.aliSeqs[1])
