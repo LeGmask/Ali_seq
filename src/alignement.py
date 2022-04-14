@@ -34,6 +34,16 @@ class Alignment:
         ]
         self.aliSeqs = ["", ""]
 
+    def resetMatrix(self):
+        self.matScores = [
+            [0 for _ in range(len(self.seqs[0]) + 1)]
+            for _ in range(len(self.seqs[1]) + 1)
+        ]
+        self.matDir = [
+            [[] for _ in range(len(self.seqs[0]) + 1)]
+            for _ in range(len(self.seqs[1]) + 1)
+        ]
+
     def __calculateScore(self, coord, previousScore, match, useBlosum: bool):
         if useBlosum:
             return (
@@ -48,7 +58,7 @@ class Alignment:
             )
 
     def __bestAction(
-        self, coord: Coord, useBlosum: bool
+        self, coord: Coord, useBlosum: bool, use0: bool = False
     ) -> List[Tuple[int, Direction]]:
         """
         Return the bestaction with coord, maximal score and direction
@@ -70,10 +80,15 @@ class Alignment:
         previousScore = self.matScores[coord[0]][coord[1] - 1]
         score.append((previousScore + self.gap, Direction.LEFT))
 
+        if use0:
+            previousScore = self.matScores[coord[0] - 1][coord[1] - 1]
+            score.append((0, None))
+
         maxScore = max(score, key=lambda x: x[0])[0]
         return [i for i in score if i[0] == maxScore]
 
     def NWSIterFill(self, useBlosum=False):
+        self.resetMatrix()
         for i, j in itertools.product(
             range(len(self.seqs[1]) + 1), range(len(self.seqs[0]) + 1)
         ):
@@ -88,7 +103,7 @@ class Alignment:
                     self.matScores[i][j] = score
                     self.matDir[i][j].append(direction)
 
-        self.bestScore = self.matScores[-1][-1]
+        self.bestScore = (self.matScores[-1][-1], (len(self.seqs[1]), len(self.seqs[0])))
 
     def NWSBacktrack(self):
         # we start from the end of the matrix
@@ -108,6 +123,62 @@ class Alignment:
                     self.aliSeqs[1] = self.seqs[1][i - 1] + self.aliSeqs[1]
                     i -= 1
                     j -= 1
+
+    
+    def SWIter(self, useBlosum=False):
+        self.resetMatrix()
+        self.bestScore = (0, (0, 0)) # we need to reset the best score
+        for i, j in itertools.product(
+            range(len(self.seqs[1]) + 1), range(len(self.seqs[0]) + 1)
+        ):
+            if j == 0 or i == 0:
+                self.matScores[i][j] = max(0, self.gap) * max(i, j) # initialisation we use 0 to reset score
+                self.matDir[i][j].append(None)
+            else:
+                for score, direction in self.__bestAction((i, j), useBlosum=useBlosum, use0=True):
+                    self.matScores[i][j] = score
+                    self.matDir[i][j].append(direction)
+                    if score > self.bestScore[0]:
+                        self.bestScore = (score, (i, j))
+
+    def SWBacktrack(self):
+        # we start from the end of the matrix and go to the best score with only gap
+        j, i = self.__goToCoord(map(len, self.seqs), self.bestScore[1])
+
+        i, j = self.bestScore[1]
+
+        while i > 0 or j > 0:
+            match self.matDir[i][j][-1]:
+                case Direction.UP:
+                    self.aliSeqs[0] = "-" + self.aliSeqs[0]
+                    self.aliSeqs[1] = self.seqs[1][i - 1] + self.aliSeqs[1]
+                    i -= 1
+                case Direction.LEFT:
+                    self.aliSeqs[0] = self.seqs[0][j - 1] + self.aliSeqs[0]
+                    self.aliSeqs[1] = "-" + self.aliSeqs[1]
+                    j -= 1
+                case Direction.DIAG:
+                    self.aliSeqs[0] = self.seqs[0][j - 1] + self.aliSeqs[0]
+                    self.aliSeqs[1] = self.seqs[1][i - 1] + self.aliSeqs[1]
+                    i -= 1
+                    j -= 1
+                case None:
+                    break
+        
+        # now we have the best local alignment we go to start of the matrix
+        self.__goToCoord((j, i), (0,0))
+
+    def __goToCoord(self, coord, target):
+        j, i = coord
+        for k in range(j, target[1], -1):
+            self.aliSeqs[0] = self.seqs[0][k - 1] + self.aliSeqs[0]
+            self.aliSeqs[1] = "-" + self.aliSeqs[1]
+        for k in range(i, target[0], -1):
+            self.aliSeqs[0] = "-" + self.aliSeqs[0]
+            self.aliSeqs[1] = self.seqs[1][k - 1] + self.aliSeqs[1]
+        
+        return target
+
 
     def __repr__(self):
         return str(self.aliSeqs[0] + "\n" + self.aliSeqs[1])
