@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-The blosum Matrix
-
-@author: hrichard
-"""
-
 BLOSUM = {
     "*": {
         "*": 1,

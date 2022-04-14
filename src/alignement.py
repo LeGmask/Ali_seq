@@ -20,6 +20,7 @@ Coord = Tuple[int, int]
 class Alignment:
     def __init__(self, seq1, seq2, match=2, mismatch=-1, gap=-1):
         self.seqs = (seq1, seq2)
+        self.bestScore = None
         self.match = match
         self.mismatch = mismatch
         self.gap = gap
@@ -33,22 +34,34 @@ class Alignment:
         ]
         self.aliSeqs = ["", ""]
 
-
     def __calculateScore(self, coord, previousScore, match, useBlosum: bool):
         if useBlosum:
-            return (previousScore + BLOSUM[self.seqs[0][coord[1] - 1]][self.seqs[1][coord[0] - 1]], Direction.DIAG)
+            return (
+                previousScore
+                + BLOSUM[self.seqs[0][coord[1] - 1]][self.seqs[1][coord[0] - 1]],
+                Direction.DIAG,
+            )
         else:
-            return (previousScore + (self.match if match else self.mismatch), Direction.DIAG)
+            return (
+                previousScore + (self.match if match else self.mismatch),
+                Direction.DIAG,
+            )
 
-
-    def __bestAction(self, coord: Coord, useBlosum: bool) -> List[Tuple[int, Direction]]:
+    def __bestAction(
+        self, coord: Coord, useBlosum: bool
+    ) -> List[Tuple[int, Direction]]:
         """
         Return the bestaction with coord, maximal score and direction
         """
 
         previousScore = self.matScores[coord[0] - 1][coord[1] - 1]
         score = [
-            self.__calculateScore(coord, previousScore, self.seqs[1][coord[0] - 1] == self.seqs[0][coord[1] - 1], useBlosum),
+            self.__calculateScore(
+                coord,
+                previousScore,
+                self.seqs[1][coord[0] - 1] == self.seqs[0][coord[1] - 1],
+                useBlosum,
+            ),
         ]
 
         previousScore = self.matScores[coord[0] - 1][coord[1]]
@@ -75,6 +88,7 @@ class Alignment:
                     self.matScores[i][j] = score
                     self.matDir[i][j].append(direction)
 
+        self.bestScore = self.matScores[-1][-1]
 
     def NWSBacktrack(self):
         # we start from the end of the matrix
@@ -83,18 +97,17 @@ class Alignment:
             match self.matDir[i][j][-1]:
                 case Direction.UP:
                     self.aliSeqs[0] = "-" + self.aliSeqs[0]
-                    self.aliSeqs[1] = self.seqs[1][i-1] + self.aliSeqs[1]
+                    self.aliSeqs[1] = self.seqs[1][i - 1] + self.aliSeqs[1]
                     i -= 1
                 case Direction.LEFT:
-                    self.aliSeqs[0] = self.seqs[0][j-1] + self.aliSeqs[0]
+                    self.aliSeqs[0] = self.seqs[0][j - 1] + self.aliSeqs[0]
                     self.aliSeqs[1] = "-" + self.aliSeqs[1]
                     j -= 1
                 case Direction.DIAG:
-                    self.aliSeqs[0] = self.seqs[0][j-1] + self.aliSeqs[0]
-                    self.aliSeqs[1] = self.seqs[1][i-1] + self.aliSeqs[1]
+                    self.aliSeqs[0] = self.seqs[0][j - 1] + self.aliSeqs[0]
+                    self.aliSeqs[1] = self.seqs[1][i - 1] + self.aliSeqs[1]
                     i -= 1
                     j -= 1
-
 
     def __repr__(self):
         return str(self.aliSeqs[0] + "\n" + self.aliSeqs[1])

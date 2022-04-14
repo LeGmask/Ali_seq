@@ -19,6 +19,7 @@ def dotPlot(file):
 def drawMatrix(matrix):
     print(tabulate(matrix, tablefmt="fancy_grid"))
 
+
 def saveMatrix(matrix, filename):
     with open(filename, "w") as f:
         f.write(tabulate(matrix, tablefmt="fancy_grid"))
