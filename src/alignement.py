@@ -274,7 +274,7 @@ class Alignment:
         :return: The alignment of the two sequences
         """
         # we start from the end of the matrix and go to the best score with only gap
-        self.__goToCoord(Coord(len(self.seqs[0]), len(self.seqs[1])), self.bestScore[1])
+        # self.__goToCoord(Coord(len(self.seqs[0]), len(self.seqs[1])), self.bestScore[1])
 
         i, j = self.bestScore[1].x, self.bestScore[1].y
 
@@ -297,7 +297,7 @@ class Alignment:
                     break
 
         # now we have the best local alignment we go to start of the matrix
-        self.__goToCoord(Coord(j, i), Coord(0, 0))
+        # self.__goToCoord(Coord(j, i), Coord(0, 0))
 
     def __goToCoord(self, coord: Coord, target: Coord) -> Coord:
         """
