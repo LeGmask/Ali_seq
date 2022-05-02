@@ -44,16 +44,6 @@ def drawMatrix(matrix):
 def saveMatrix(matrix, filename):
     """
     The saveMatrix function takes a matrix and saves it to the specified file.
-    The matrix is saved in the format:
-        row 1, column 1, value
-        row 1, column 2, value
-        ...
-
-       The saveMatrix function takes two arguments:
-
-       *matrix* - A list of lists containing numerical values. Each element in the list corresponds to a row of data.
-
-       *filename* - A string specifying where to save the data (e.g., &quot;myData/dataFile&quot;).
 
     :param matrix: Save the matrix to a file
     :param filename: Specify the name of the file to which you want to save your matrix

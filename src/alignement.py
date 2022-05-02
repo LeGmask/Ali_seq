@@ -1,9 +1,12 @@
 import itertools
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Tuple
+from nntplib import GroupInfo
+from operator import methodcaller
+from typing import List, Tuple, Union
 
 from .BLOSUM import BLOSUM
+from .sequence import GroupSequences, Sequence
 
 
 class Direction(Enum):
@@ -46,9 +49,7 @@ class Alignment:
     Alignment class to perform global or local alignment of two sequences
     """
 
-    def __init__(
-        self, seq1: str, seq2: str, match: int = 2, mismatch: int = -1, gap: int = -1
-    ) -> None:
+    def __init__(self, seq1: Union[str, Sequence], seq2: Union[str, Sequence], match: int = 2, mismatch: int = -1, gap: int = -1) -> None:
         """
         The __init__ function initializes the class with two sequences, a match score,
         a mismatch score, and a gap penalty. It also initializes matScores to be an empty
@@ -63,20 +64,19 @@ class Alignment:
         :param gap=-1: Set the gap penalty
         :return: The list of lists matscores, which is the matrix that contains the scores for each pair of letters in seqs
         """
-        self.seqs = (seq1, seq2)
+        if isinstance(seq1, str):
+            seq1 = Sequence("unnamed sequence 1", seq1)
+        if isinstance(seq2, str):
+            seq2 = Sequence("unnamed sequence 2", seq2)
+
+        self.seqs = [seq1, seq2]
         self.bestScore = None
         self.match = match
         self.mismatch = mismatch
         self.gap = gap
-        self.matScores = [
-            [0 for _ in range(len(self.seqs[0]) + 1)]
-            for _ in range(len(self.seqs[1]) + 1)
-        ]
-        self.matDir = [
-            [[] for _ in range(len(self.seqs[0]) + 1)]
-            for _ in range(len(self.seqs[1]) + 1)
-        ]
-        self.aliSeqs = ["", ""]
+
+        self.__resetMatrix()  # Reset the matrices to all zeros
+        self.aliSeqs = GroupSequences(self.seqs)
 
     def __resetMatrix(self) -> None:
         """
@@ -89,12 +89,12 @@ class Alignment:
         """
 
         self.matScores = [
-            [0 for _ in range(len(self.seqs[0]) + 1)]
-            for _ in range(len(self.seqs[1]) + 1)
+            [0 for _ in range(self.seqs[0].getLength() + 1)]
+            for _ in range(self.seqs[1].getLength() + 1)
         ]
         self.matDir = [
-            [[] for _ in range(len(self.seqs[0]) + 1)]
-            for _ in range(len(self.seqs[1]) + 1)
+            [[] for _ in range(self.seqs[0].getLength() + 1)]
+            for _ in range(self.seqs[1].getLength() + 1)
         ]
 
     def __calculateScore(
@@ -102,23 +102,20 @@ class Alignment:
     ) -> Tuple[int, Direction]:
         """
         The __calculateScore function calculates the score of a given coordinate in the matrix.
-        The function takes as input:
-            coord - The coordinate to be calculated, which is an object of type Coord.
-            previousScore - The score at the previous position in the matrix, which is an integer.
-            match - A boolean value indicating whether or not there was a match between two letters at this position in alignment (i.e., did they both come from self.seqs[0][coord] and self.seqs[0][coord]).  This value will be True if there was a match and False otherwise (i..e, if they were mismatched).
-            useBlosum: A boolean value indicating whether or not we should use BLOSUM62 scoring instead of simple scoring.
 
         :param self: Reference the class object itself
         :param coord:Coord: Store the x and y coordinates of the current cell
         :param previousScore: Store the score of the cell that is above and to the left of current cell
         :param match: Determine whether the current cell is a match or not
-        :param useBlosum:bool: Determine whether the score should be calculated using the blosum matrix or not
+        :param useBlosum: Determine whether the score should be calculated using the blosum matrix or not
         :return: The score of the current cell and the direction to get there
         """
         if useBlosum:
             return (
                 previousScore
-                + BLOSUM[self.seqs[0][coord.y - 1]][self.seqs[1][coord.x - 1]],
+                + BLOSUM[self.seqs[0].getIndex(coord.y - 1)][
+                    self.seqs[1].getIndex(coord.x - 1)
+                ],
                 Direction.DIAG,
             )
         else:
@@ -133,14 +130,11 @@ class Alignment:
         """
         The __bestAction function returns the best action with coord, maximal score and direction.
         The function takes as input:
-        -coord: a coordinate in the matrix of scores (x,y)
-        -useBlosum: boolean to use blosum62 or not. If True it will use it otherwise not.
-        -use0 : boolean to add 0 or not in the calculation of maxScore
 
         :param self: Reference the class itself
-        :param coord:Coord: Specify the current position in the matrix
-        :param useBlosum:bool: Determine whether the blosum matrix should be used or not
-        :param use0:bool=False: Determine whether or not to use the 0 score
+        :param coord: Specify the current position in the matrix
+        :param useBlosum: Determine whether the blosum matrix should be used or not
+        :param use0=False: Determine whether or not to use the 0 score
         :return: The best action with coord, maximal score and direction
         """
 
@@ -149,7 +143,9 @@ class Alignment:
             self.__calculateScore(
                 coord,
                 previousScore,
-                self.seqs[1][coord.x - 1] == self.seqs[0][coord.y - 1],
+                self.seqs[0].getIndex(coord.y - 1)
+                == self.seqs[1].getIndex(coord.x - 1),
+                # self.seqs[1][coord.x - 1] == self.seqs[0][coord.y - 1],
                 useBlosum,
             ),
         ]
@@ -182,23 +178,22 @@ class Alignment:
         :return: The best score for the given coordinate
         """
         self.__resetMatrix()
-        for i, j in itertools.product(
-            range(len(self.seqs[1]) + 1), range(len(self.seqs[0]) + 1)
-        ):
-            if j == 0 or i == 0:
-                self.matScores[i][j] = self.gap * max(i, j)
-                if j == 0:
-                    self.matDir[i][j].append(Direction.UP)
+        for i in range(self.seqs[1].getLength() + 1):
+            for j in range(self.seqs[0].getLength() + 1):
+                if j == 0 or i == 0:
+                    self.matScores[i][j] = self.gap * max(i, j)
+                    if j == 0:
+                        self.matDir[i][j].append(Direction.UP)
+                    else:
+                        self.matDir[i][j].append(Direction.LEFT)
                 else:
-                    self.matDir[i][j].append(Direction.LEFT)
-            else:
-                for score, direction in self.__bestAction(Coord(i, j), useBlosum):
-                    self.matScores[i][j] = score
-                    self.matDir[i][j].append(direction)
+                    for score, direction in self.__bestAction(Coord(i, j), useBlosum):
+                        self.matScores[i][j] = score
+                        self.matDir[i][j].append(direction)
 
         self.bestScore = (
             self.matScores[-1][-1],
-            Coord(len(self.seqs[1]), len(self.seqs[0])),
+            Coord(self.seqs[0].getLength(), self.seqs[1].getLength()),
         )
 
     def NWSBacktrack(self) -> None:
@@ -214,23 +209,31 @@ class Alignment:
         :param self: Access the class attributes
         :return: The alignment of the two sequences in a list
         """
+        group = GroupSequences([self.seqs[0], self.seqs[1]])
+        group.resetForAlignment()
+
         # we start from the end of the matrix
-        j, i = map(len, self.seqs)
+        j, i = map(methodcaller("getLength"), self.seqs)
         while i > 0 or j > 0:
             match self.matDir[i][j][-1]:
                 case Direction.UP:
-                    self.aliSeqs[0] = "-" + self.aliSeqs[0]
-                    self.aliSeqs[1] = self.seqs[1][i - 1] + self.aliSeqs[1]
+                    group.addToGroup(["-", self.seqs[0].getIndex(i - 1)])
                     i -= 1
                 case Direction.LEFT:
-                    self.aliSeqs[0] = self.seqs[0][j - 1] + self.aliSeqs[0]
-                    self.aliSeqs[1] = "-" + self.aliSeqs[1]
+                    group.insertFromBacktrace(
+                        [self.seqs[0].getIndex(j - 1), "-"]
+                    )
                     j -= 1
                 case Direction.DIAG:
-                    self.aliSeqs[0] = self.seqs[0][j - 1] + self.aliSeqs[0]
-                    self.aliSeqs[1] = self.seqs[1][i - 1] + self.aliSeqs[1]
+                    group.insertFromBacktrace(
+                        [
+                            self.seqs[0].getIndex(j - 1),
+                            self.seqs[1].getIndex(i - 1),
+                        ]
+                    )
                     i -= 1
                     j -= 1
+        self.aliSeqs = group
 
     def SWIter(self, useBlosum: bool = False) -> None:
         """
@@ -245,7 +248,8 @@ class Alignment:
         self.__resetMatrix()
         self.bestScore = None  # we need to reset the best score
         for i, j in itertools.product(
-            range(len(self.seqs[1]) + 1), range(len(self.seqs[0]) + 1)
+            range(self.seqs[1].getLength() + 1),
+            range(self.seqs[0].getLength() + 1),
         ):
             if j == 0 or i == 0:
                 self.matScores[i][j] = max(0, self.gap) * max(
@@ -264,7 +268,7 @@ class Alignment:
                     if not self.bestScore or score > self.bestScore[0]:
                         self.bestScore = (score, Coord(i, j))
 
-    def SWBacktrack(self) -> None:
+    def SWBacktrack(self, full = False) -> None:
         """
         The SWBacktrack function takes a list of sequences and the scoring matrix as input.
         It then uses the Smith-Waterman algorithm to find the best local alignment between all pairs of sequences in seqs.
@@ -274,30 +278,43 @@ class Alignment:
         :return: The alignment of the two sequences
         """
         # we start from the end of the matrix and go to the best score with only gap
-        # self.__goToCoord(Coord(len(self.seqs[0]), len(self.seqs[1])), self.bestScore[1])
+        self.aliSeqs.resetForAlignment()
+
+        if full:
+            self.__goToCoord(
+                Coord(self.seqs[0].getLength(), self.seqs[1].getLength()),
+                self.bestScore[1],
+            )
 
         i, j = self.bestScore[1].x, self.bestScore[1].y
 
         while i > 0 or j > 0:
             match self.matDir[i][j][-1]:
                 case Direction.UP:
-                    self.aliSeqs[0] = "-" + self.aliSeqs[0]
-                    self.aliSeqs[1] = self.seqs[1][i - 1] + self.aliSeqs[1]
+                    self.aliSeqs.addToGroup(
+                        ["-", self.seqs[0].getIndex(i - 1)]
+                    )
                     i -= 1
                 case Direction.LEFT:
-                    self.aliSeqs[0] = self.seqs[0][j - 1] + self.aliSeqs[0]
-                    self.aliSeqs[1] = "-" + self.aliSeqs[1]
+                    self.aliSeqs.insertFromBacktrace(
+                        [self.seqs[0].getIndex(j - 1), "-"]
+                    )
                     j -= 1
                 case Direction.DIAG:
-                    self.aliSeqs[0] = self.seqs[0][j - 1] + self.aliSeqs[0]
-                    self.aliSeqs[1] = self.seqs[1][i - 1] + self.aliSeqs[1]
+                    self.aliSeqs.insertFromBacktrace(
+                        [
+                            self.seqs[0].getIndex(j - 1),
+                            self.seqs[1].getIndex(i - 1),
+                        ]
+                    )
                     i -= 1
                     j -= 1
                 case None:
                     break
 
-        # now we have the best local alignment we go to start of the matrix
-        # self.__goToCoord(Coord(j, i), Coord(0, 0))
+        if full:
+            # now we have the best local alignment we go to start of the matrix
+            self.__goToCoord(Coord(j, i), Coord(0, 0))
 
     def __goToCoord(self, coord: Coord, target: Coord) -> Coord:
         """
@@ -311,11 +328,13 @@ class Alignment:
         """
         i, j = coord.x, coord.y
         for k in range(i, target.y, -1):
-            self.aliSeqs[0] = self.seqs[0][k - 1] + self.aliSeqs[0]
-            self.aliSeqs[1] = "-" + self.aliSeqs[1]
+            self.aliSeqs.insertFromBacktrace(
+                [self.seqs[0].getIndex(k - 1), "-"]
+            )
         for k in range(j, target.x, -1):
-            self.aliSeqs[0] = "-" + self.aliSeqs[0]
-            self.aliSeqs[1] = self.seqs[1][k - 1] + self.aliSeqs[1]
+            self.aliSeqs.insertFromBacktrace(
+                ["-", self.seqs[1].getIndex(k - 1)]
+            )
 
         return target
 
