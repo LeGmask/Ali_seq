@@ -1,8 +1,6 @@
 import itertools
 from dataclasses import dataclass
 from enum import Enum
-from nntplib import GroupInfo
-from operator import methodcaller
 from typing import List, Tuple, Union
 
 from .BLOSUM import BLOSUM
@@ -49,7 +47,14 @@ class Alignment:
     Alignment class to perform global or local alignment of two sequences
     """
 
-    def __init__(self, seq1: Union[str, Sequence, GroupSequences], seq2: Union[str, Sequence, GroupSequences], match: int = 2, mismatch: int = -1, gap: int = -1) -> None:
+    def __init__(
+        self,
+        seq1: Union[str, Sequence, GroupSequences],
+        seq2: Union[str, Sequence, GroupSequences],
+        match: int = 2,
+        mismatch: int = -1,
+        gap: int = -1,
+    ) -> None:
         """
         The __init__ function initializes the class with two sequences, a match score,
         a mismatch score, and a gap penalty. It also initializes matScores to be an empty
@@ -113,7 +118,11 @@ class Alignment:
         # handle when we have a gap in one of the sequences
         # if self.seqs[0].getIndex(coord.y - 1) == '-' or self.seqs[1].getIndex(coord.x - 1) == '-':
         #     return (previousScore + self.gap, Direction.DIAG)
-        if useBlosum and self.seqs[0].getIndex(coord.y - 1) != '-' and self.seqs[1].getIndex(coord.x - 1) != '-':
+        if (
+            useBlosum
+            and self.seqs[0].getIndex(coord.y - 1) != "-"
+            and self.seqs[1].getIndex(coord.x - 1) != "-"
+        ):
             return (
                 previousScore
                 + BLOSUM[self.seqs[0].getIndex(coord.y - 1)][
@@ -181,8 +190,7 @@ class Alignment:
         :return: The best score for the given coordinate
         """
         self.__resetMatrix()
-        for i in range(self.seqs[1].getLength() + 1):
-            for j in range(self.seqs[0].getLength() + 1):
+        for i,j in itertools.product(range(self.seqs[1].getLength() + 1), range(self.seqs[0].getLength() + 1)):
                 if j == 0 or i == 0:
                     self.matScores[i][j] = self.gap * max(i, j)
                     if j == 0:
@@ -217,14 +225,23 @@ class Alignment:
         while i > 0 or j > 0:
             match self.matDir[i][j][-1]:
                 case Direction.UP:
-                    self.aliSeqs.insertFromBacktrace(["-"] * self.seqs[0].numberOfSequences + self.getIndex(self.seqs[1], i-1))
+                    self.aliSeqs.insertFromBacktrace(
+                        ["-"] * self.seqs[0].numberOfSequences
+                        + self.getIndex(self.seqs[1], i - 1)
+                    )
                     i -= 1
                 case Direction.LEFT:
-                    self.aliSeqs.insertFromBacktrace(self.getIndex(self.seqs[0], j-1) + ["-"] * self.seqs[1].numberOfSequences)
+                    self.aliSeqs.insertFromBacktrace(
+                        self.getIndex(self.seqs[0], j - 1)
+                        + ["-"] * self.seqs[1].numberOfSequences
+                    )
                     # self.aliSeqs.insertFromBacktrace([self.seqs[0].getIndex(j - 1), "-"])
                     j -= 1
                 case Direction.DIAG:
-                    self.aliSeqs.insertFromBacktrace(self.getIndex(self.seqs[0], j-1) + self.getIndex(self.seqs[1], i-1))
+                    self.aliSeqs.insertFromBacktrace(
+                        self.getIndex(self.seqs[0], j - 1)
+                        + self.getIndex(self.seqs[1], i - 1)
+                    )
                     # self.aliSeqs.insertFromBacktrace([self.seqs[0].getIndex(j-1), self.seqs[1].getIndex(i-1)])
                     i -= 1
                     j -= 1
@@ -232,6 +249,15 @@ class Alignment:
         self.aliSeqs.setAsAligned()
 
     def getIndex(self, sequence: Union[Sequence, GroupSequences], index) -> List[str]:
+        """
+        The getIndex function takes a sequence and an index as arguments.
+        It returns the sequences at the given index in a list.
+
+        :param self: Access the attributes and methods of the class
+        :param sequence: The sequence retrive required index
+        :param index: Get the index of a sequence in a group
+        :return: A list of the sequences at a given index
+        """
         if isinstance(sequence, GroupSequences):
             return sequence.getSequencesAtIndex(index)
         else:
@@ -270,12 +296,12 @@ class Alignment:
                     if not self.bestScore or score > self.bestScore[0]:
                         self.bestScore = (score, Coord(i, j))
 
-    def SWBacktrack(self, full = False) -> None:
+    def SWBacktrack(self, full=False) -> None:
         """
         The SWBacktrack function takes a list of sequences and the scoring matrix as input.
         It then uses the Smith-Waterman algorithm to find the best local alignment between all pairs of sequences in seqs.
         The function returns a list of aligned sequence strings.
-        
+
         :param self: Access the attributes and methods of the class in python
         :param full=False: Return only the best local alignment
         :return: The best local alignment between all pairs of sequences in seqs
@@ -292,13 +318,22 @@ class Alignment:
         while i > 0 or j > 0:
             match self.matDir[i][j][-1]:
                 case Direction.UP:
-                    self.aliSeqs.insertFromBacktrace(["-"] * self.seqs[0].numberOfSequences + self.getIndex(self.seqs[1], i-1))
+                    self.aliSeqs.insertFromBacktrace(
+                        ["-"] * self.seqs[0].numberOfSequences
+                        + self.getIndex(self.seqs[1], i - 1)
+                    )
                     i -= 1
                 case Direction.LEFT:
-                    self.aliSeqs.insertFromBacktrace(self.getIndex(self.seqs[0], j-1) + ["-"] * self.seqs[1].numberOfSequences)
+                    self.aliSeqs.insertFromBacktrace(
+                        self.getIndex(self.seqs[0], j - 1)
+                        + ["-"] * self.seqs[1].numberOfSequences
+                    )
                     j -= 1
                 case Direction.DIAG:
-                    self.aliSeqs.insertFromBacktrace(self.getIndex(self.seqs[0], j-1) + self.getIndex(self.seqs[1], i-1))
+                    self.aliSeqs.insertFromBacktrace(
+                        self.getIndex(self.seqs[0], j - 1)
+                        + self.getIndex(self.seqs[1], i - 1)
+                    )
                     i -= 1
                     j -= 1
                 case None:
@@ -311,7 +346,9 @@ class Alignment:
 
     def __goToCoord(self, coord: Coord, target: Coord) -> Coord:
         """
-        The __goToCoord function takes in a coordinate and a target coordinate. It then moves the sequence that is currently being aligned to the target coordinate, by moving up or down rows until it reaches the target.
+        The __goToCoord function takes in a coordinate and a target coordinate.
+        It then moves the sequence that is currently being aligned to the target coordinate,
+        by moving up or down rows until it reaches the target.
 
 
         :param self: Access the attributes and methods of the class in python
@@ -323,12 +360,14 @@ class Alignment:
         for k in range(i, target.y, -1):
             if any(el != "-" for el in self.getIndex(self.seqs[0], k - 1)):
                 self.aliSeqs.insertFromBacktrace(
-                    self.getIndex(self.seqs[0], k - 1) + ["-"] * self.seqs[1].numberOfSequences
+                    self.getIndex(self.seqs[0], k - 1)
+                    + ["-"] * self.seqs[1].numberOfSequences
                 )
         for k in range(j, target.x, -1):
             if any(el != "-" for el in self.getIndex(self.seqs[1], k - 1)):
                 self.aliSeqs.insertFromBacktrace(
-                    ["-"] * self.seqs[0].numberOfSequences + self.getIndex(self.seqs[1], k - 1)
+                    ["-"] * self.seqs[0].numberOfSequences
+                    + self.getIndex(self.seqs[1], k - 1)
                 )
         return target
 

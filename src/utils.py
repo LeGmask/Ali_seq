@@ -1,5 +1,4 @@
 from typing import List
-from tabulate import tabulate
 
 from src.sequence import Sequence
 from .fasta import readFastaMul
@@ -38,7 +37,15 @@ def dotPlot(file):
 
 
 def drawMatrix(matrix):
-    print(tabulate(matrix, tablefmt="fancy_grid"))
+    """
+    The drawMatrix function draws a matrix of numbers to the screen.
+    It takes one argument, a list of lists (a 2D array).
+    The function will print each row on its own line.
+
+    :param matrix: Specify the matrix to be drawn
+    :return: A string representation of the matrix
+    """
+    return "".join("".join(i) + "\n" for i in matrix)
 
 
 def saveMatrix(matrix, filename):
@@ -50,4 +57,16 @@ def saveMatrix(matrix, filename):
     :return: The number of values written to the file
     """
     with open(filename, "w") as f:
-        f.write(tabulate(matrix, tablefmt="fancy_grid"))
+        f.write(drawMatrix(matrix))
+
+
+def saveToFile(string, filename) -> None:
+    """
+    The saveToFile function saves a string to the specified file.
+
+    :param string: Store the string that is to be written into the file
+    :param filename: Specify the name of the file to which data is saved
+    :return: Nothing
+    """
+    with open(filename, "w") as f:
+        f.write(string)
