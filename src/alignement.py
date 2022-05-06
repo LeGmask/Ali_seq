@@ -189,18 +189,21 @@ class Alignment:
         :param useBlosum=False: Indicate whether the blosum matrix should be used or not
         :return: The best score for the given coordinate
         """
+        self.aliSeqs.resetForAlignment()
         self.__resetMatrix()
-        for i,j in itertools.product(range(self.seqs[1].getLength() + 1), range(self.seqs[0].getLength() + 1)):
-                if j == 0 or i == 0:
-                    self.matScores[i][j] = self.gap * max(i, j)
-                    if j == 0:
-                        self.matDir[i][j].append(Direction.UP)
-                    else:
-                        self.matDir[i][j].append(Direction.LEFT)
+        for i, j in itertools.product(
+            range(self.seqs[1].getLength() + 1), range(self.seqs[0].getLength() + 1)
+        ):
+            if j == 0 or i == 0:
+                self.matScores[i][j] = self.gap * max(i, j)
+                if j == 0:
+                    self.matDir[i][j].append(Direction.UP)
                 else:
-                    for score, direction in self.__bestAction(Coord(i, j), useBlosum):
-                        self.matScores[i][j] = score
-                        self.matDir[i][j].append(direction)
+                    self.matDir[i][j].append(Direction.LEFT)
+            else:
+                for score, direction in self.__bestAction(Coord(i, j), useBlosum):
+                    self.matScores[i][j] = score
+                    self.matDir[i][j].append(direction)
 
         self.bestScore = (
             self.matScores[-1][-1],
@@ -273,6 +276,7 @@ class Alignment:
         :param useBlosum=False: Indicate whether the blosum62 matrix should be used or not
         :return: The best score for the current cell
         """
+        self.aliSeqs.resetForAlignment()
         self.__resetMatrix()
         self.bestScore = None  # we need to reset the best score
         for i, j in itertools.product(

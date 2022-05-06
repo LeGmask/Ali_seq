@@ -68,7 +68,7 @@ class GroupSequences:
         self.numberOfSequences = len(self.sequences)
         self.indexOfBestSequence = -1
 
-        self.resetForAlignment()
+        self.beforeAlignment = self.sequences
 
     def setBestSequence(self, index: Sequence) -> None:
         """

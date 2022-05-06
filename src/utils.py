@@ -45,7 +45,7 @@ def drawMatrix(matrix):
     :param matrix: Specify the matrix to be drawn
     :return: A string representation of the matrix
     """
-    return "".join("".join(i) + "\n" for i in matrix)
+    return "".join("".join(str(i)) + "\n" for i in matrix)
 
 
 def saveMatrix(matrix, filename):
