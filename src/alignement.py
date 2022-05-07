@@ -238,14 +238,12 @@ class Alignment:
                         self.getIndex(self.seqs[0], j - 1)
                         + ["-"] * self.seqs[1].numberOfSequences
                     )
-                    # self.aliSeqs.insertFromBacktrace([self.seqs[0].getIndex(j - 1), "-"])
                     j -= 1
                 case Direction.DIAG:
                     self.aliSeqs.insertFromBacktrace(
                         self.getIndex(self.seqs[0], j - 1)
                         + self.getIndex(self.seqs[1], i - 1)
                     )
-                    # self.aliSeqs.insertFromBacktrace([self.seqs[0].getIndex(j-1), self.seqs[1].getIndex(i-1)])
                     i -= 1
                     j -= 1
 
